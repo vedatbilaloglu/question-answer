@@ -4,9 +4,8 @@ const CustomError = require("../../helpers/error/CustomError");
 
 const customErrorHandler = (err,req,res,next) => {
     let customError = err;
-    //console.log(err.name);
 
-    if(err.name === "SyntaxError"){
+    if(err.name === "SyntaxError"){                              // Örnek olarak 2 tane if içerisinde 2 hatayı bu şekilde yakalayabiliriz.
         customError = new CustomError("Unexpected Syntax",400);
     }
     if(err.name === "ValidationError"){
@@ -14,9 +13,10 @@ const customErrorHandler = (err,req,res,next) => {
     }
     console.log(customError.message, customError.status);
 
-    res.status(customError.status || 500).json({
+    res.status(customError.status || 500) // Beklenmedik bir hatayla karşılaşırsak 500 döndürürüz.
+    .json({        
         success: false,
-        message: customError.message
+        message: customError.message // Hata mesajını buradan alırız.
     });
 };
 

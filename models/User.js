@@ -1,14 +1,14 @@
-var mongoose = require('mongoose');
-var Schema = mongoose.Schema;
-
-var UserSchema = new Schema({
+const mongoose = require('mongoose');  // Database User sınıfını kullanmak için models klasörü altında User.js oluşturdum.
+const Schema = mongoose.Schema;
+const bcrypt = require('bcryptjs');
+const UserSchema = new Schema({
   name: {
       type: String,
       required: [true,"Please provide a name"]
   },
   email: {
       type: String,
-      required: true,
+      required: [true,"Please provide a email"],
       unique: [true, "Please try different email"],
       match: [
         /^([\w-\.]+@([\w-]+\.)+[\w-]{2,4})?$/,
@@ -50,6 +50,22 @@ var UserSchema = new Schema({
       type: Boolean,
       default: false
   }
+});
+
+UserSchema.pre("save", function(next){  // Hemen kaydedilmeden önce yapilmasi gereken işlemler burada gerçekleştirilir.
+    
+    if(!this.isModified("password")){  
+        next(); // Eğer parola değişmediyse aşağıdaki işlemlere girmeden devam et.
+    }
+    bcrypt.genSalt(10, (err, salt) => { // Bu adımdan itibaren parola yeni oluştuysa ya da değiştiyse bu bölüm çalışır.
+        if(err) next(err);
+
+        bcrypt.hash(this.password, salt, (err, hash) => {
+            if (err) next(err);
+            this.password = hash;
+            next();
+        });
+    });
 });
 
 module.exports = mongoose.model("User",UserSchema);
