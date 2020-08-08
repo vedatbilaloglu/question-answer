@@ -9,7 +9,6 @@ dotenv.config({
 });
 
 //MongoDB Connection
-
 connectDatabase();
 
 const app = express();
