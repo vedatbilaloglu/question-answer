@@ -4,6 +4,7 @@ const asyncErrorWrapper = require("express-async-handler");
 const {sendJwtToClient} = require("../helpers/authorization/tokenHelpers");
 const {validateUserInput, comparePassword} = require("../helpers/input/inputHelpers");
 const CustomError = require("../helpers/error/CustomError");
+const sendEmail = require("../helpers/libraries/sendEmail");
 
 const register = asyncErrorWrapper(async (req,res,next) => { // asyncErrorWrapper ile try catch yazmaya gerek kalmadan işlemleri yürütebiliriz.
     
@@ -53,7 +54,7 @@ const getUser = (req,res,next) => {
 
 const logout = asyncErrorWrapper(async (req,res,next) => {
 
-    const {JWT_COOKIE_EXPIRE, NODE_ENV} = process.env;
+    const {NODE_ENV} = process.env;
 
     return res.status(200)
     .cookie({
@@ -67,9 +68,104 @@ const logout = asyncErrorWrapper(async (req,res,next) => {
 
 });
 
+const imageUpload = asyncErrorWrapper(async (req,res,next) => {
+
+const user = await User.findByIdAndUpdate(req.user.id,{
+    "profile_image" : req.savedProfileImage
+},{
+    new: true,
+    runValidators: true
+});
+
+    res.status(200).json({
+        success: true,
+        message: "Image upload successfully",
+        data: user
+    })
+
+});
+
+// Forgot Password
+
+const forgotPassword = asyncErrorWrapper(async (req,res,next) => {
+
+    const resetEmail = req.body.email;
+    const user = await User.findOne({email : resetEmail});
+
+    if(!user){
+        return next(new CustomError("There is no user with that email",400));
+    }
+
+    const resetPasswordToken = user.getResetPasswordTokenFromUser();
+    
+    await user.save();
+
+    const resetPasswordUrl = `http://localhost:5000/api/auth/resetpassword?resetPasswordToken=${resetPasswordToken}`;
+
+    const emailTemplate = `
+    <h3>Reset Your Password</h3>
+    <p> This <a href= '${resetPasswordUrl}' target = '_blank'> link </p>
+    `;
+
+    
+    try{
+        await sendEmail({
+            from: process.env.SMTP_USER,
+            to: resetEmail,
+            subject: "Reset Your Password",
+            html: emailTemplate
+        });
+        return res.status(200).json({
+            success: true,
+            message: "Token send to your email"
+        });
+    }
+    catch(err){
+        user.resetPasswordToken = undefined;
+        user.resetPasswordExpire = undefined
+
+        await user.save();
+
+        return next(new CustomError("Email could not be sent", 500));
+    }
+});
+
+const resetPassword = asyncErrorWrapper(async (req,res,next) => {
+
+    const {resetPasswordToken} = req.query;
+    const {password} = req.body.password;
+
+    if(!resetPasswordToken){
+        return next(new CustomError("Please provide a valid token"));
+    }
+
+    let user = await User.findOne({
+        resetPasswordToken : resetPasswordToken,
+        resetPasswordExpire : {$gt : Date.now()} // Süresi dolmadıysa buradaki işlemi gerçekleştir.
+    });
+
+    if(!user){
+        return next(new CustomError("Please check your password"));
+    }
+
+    user.password = password;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
+
+    await user.save();
+
+    return res.status(200).json({
+        success: true,
+        message: "Successful"
+    });
+});
+
 module.exports = {
     register,
     login,
     logout,
+    imageUpload,
+    forgotPassword,
+    resetPassword,
     getUser
 }
