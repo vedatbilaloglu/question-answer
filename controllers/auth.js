@@ -133,21 +133,21 @@ const forgotPassword = asyncErrorWrapper(async (req,res,next) => {
 const resetPassword = asyncErrorWrapper(async (req,res,next) => {
 
     const {resetPasswordToken} = req.query;
-    const {password} = req.body.password;
+    const {password} = req.body;
 
     if(!resetPasswordToken){
         return next(new CustomError("Please provide a valid token"));
     }
-
+    
     let user = await User.findOne({
         resetPasswordToken : resetPasswordToken,
         resetPasswordExpire : {$gt : Date.now()} // Süresi dolmadıysa buradaki işlemi gerçekleştir.
     });
-
+    
     if(!user){
         return next(new CustomError("Please check your password"));
     }
-
+    
     user.password = password;
     user.resetPasswordToken = undefined;
     user.resetPasswordExpire = undefined;
