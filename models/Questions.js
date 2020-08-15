@@ -31,7 +31,11 @@ const QuestionsSchema = new Schema({
             type: mongoose.Schema.ObjectId,
             ref: "User"
         }
-    ]
+    ],
+    answers: [{
+        type: mongoose.Schema.ObjectId,
+        ref: "Answer"
+    }], 
 });
 
 QuestionsSchema.pre("save", function(next){
